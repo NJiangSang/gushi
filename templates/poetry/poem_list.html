@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>古诗词列表</title>
+    <style>
+        body {
+            font-family: 'YaHei', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        a {
+            text-decoration: none;
+            color: #d32889;
+            padding: 5px 10px;
+            border-radius: 5px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+        a:hover {
+            background-color: #78b933;
+            color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .search-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .search-bar input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .search-bar button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin-left: 5px;  /* 按钮之间留一点距离 */
+        }
+        .search-bar button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            text-align: left;
+        }
+        th {
+            background-color: #f9f9f9;
+        }
+        .action-links {
+            display: flex;
+            gap: 10px;
+        }
+        /* 模态框样式 */
+        #videoModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        #videoModal .modal-content {
+            position: relative;
+            width: 80%;
+            max-width: 600px;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        #closeModal {
+            cursor: pointer;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 24px;
+            color: #d32889;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>古诗词合集</h1>
+
+        <div class="search-bar">
+            <input type="text" id="searchInput" placeholder="可搜索古诗标题、作者、类型">
+            <button id="searchButton">搜索</button>
+            <button id="resetButton">重置</button>
+        </div>
+
+        <div style="text-align: right; margin-bottom: 10px;">
+            <a href="{% url 'poem_create' %}" style="background-color: #007BFF; color: white; padding: 10px;">新增古诗词</a>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>标题</th>
+                    <th>作者</th>
+                    <th>类型</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for poem in poems %}
+                    <tr>
+                        <td>{{ poem.title }}</td>
+                        <td>{{ poem.author }}</td>
+                        <td>{{ poem.type }}</td>
+                        <td>
+                            <div class="action-links">
+                                <a href="{% url 'poem_update' poem.id %}">编辑</a>
+                                <a href="{% url 'poem_delete' poem.id %}">删除</a>
+                                {% if poem.video_url %}  <!-- 检查是否有视频链接 -->
+                                    <a href="#" class="watch-video" data-video-url="{{ poem.video_url }}">观看视频</a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- 模态框 -->
+        <div id="videoModal">
+            <div class="modal-content">
+                <span id="closeModal">&times;</span>
+                <h3>视频播放：</h3>
+                <iframe id="videoIframe" class="video" src=""
+                        scrolling="no" border="0" frameborder="0" allowfullscreen="true" width="100%" height="320">
+                </iframe>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('searchButton').addEventListener('click', function() {
+            const searchValue = document.getElementById('searchInput').value.toLowerCase();
+            const poems = document.querySelectorAll('tbody tr');
+            poems.forEach(poem => {
+                const title = poem.cells[0].textContent.toLowerCase();
+                const author = poem.cells[1].textContent.toLowerCase();
+                const type = poem.cells[2].textContent.toLowerCase();
+                if (title.includes(searchValue) || author.includes(searchValue) || type.includes(searchValue)) {
+                    poem.style.display = 'table-row';
+                } else {
+                    poem.style.display = 'none';
+                }
+            });
+        });
+
+        document.getElementById('resetButton').addEventListener('click', function() {
+            document.getElementById('searchInput').value = '';
+            const poems = document.querySelectorAll('tbody tr');
+            poems.forEach(poem => {
+                poem.style.display = 'table-row';
+            });
+        });
+
+        // 获取视频模态框和iframe元素
+        const videoModal = document.getElementById("videoModal");
+        const videoIframe = document.getElementById("videoIframe");
+
+        // 点击观看视频时
+        document.querySelectorAll('.watch-video').forEach(link => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault(); // 阻止链接的默认行为
+                const videoUrl = this.getAttribute('data-video-url');
+                videoIframe.src = videoUrl; // 设置视频源
+                videoModal.style.display = "flex"; // 显示模态框
+            });
+        });
+
+        // 点击关闭按钮隐藏模态框
+        document.getElementById('closeModal').addEventListener('click', function() {
+            videoModal.style.display = "none"; // 隐藏模态框
+            videoIframe.src = ""; // 清空视频源以停止播放
+        });
+
+        // 点击模态框外部也可关闭模态框
+        videoModal.addEventListener('click', function(e) {
+            if (e.target === videoModal) {
+                videoModal.style.display = "none"; // 隐藏模态框
+                videoIframe.src = ""; // 清空视频源以停止播放
+            }
+        });
+    </script>
+</body>
+</html>
